@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Tank QC Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+
+body{
+    margin:0;
+    padding:20px;
+    background:#f4f7fb;
+    font-family:Arial,sans-serif;
+}
+
+h1{
+    text-align:center;
+    color:#003366;
+    margin-bottom:40px;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    margin-bottom:30px;
+    border-radius:15px;
+    box-shadow:0 4px 15px rgba(0,0,0,0.1);
+}
+
+h2{
+    color:#222;
+}
+
+canvas{
+    width:100% !important;
+    height:400px !important;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Live Tank QC Analytics Dashboard</h1>
+
+<div class="card">
+    <h2>Density Trend</h2>
+    <canvas id="densityChart"></canvas>
+</div>
+
+<div class="card">
+    <h2>Flash Point Trend</h2>
+    <canvas id="flashChart"></canvas>
+</div>
+
+<div class="card">
+    <h2>Recovery Temperature Trend</h2>
+    <canvas id="recoveryChart"></canvas>
+</div>
+
+<div class="card">
+    <h2>Viscosity Trend</h2>
+    <canvas id="viscosityChart"></canvas>
+</div>
+
+<div class="card">
+    <h2>Sulphur Trend</h2>
+    <canvas id="sulphurChart"></canvas>
+</div>
+
+<script>
+
+// =====================================================
+// GOOGLE SHEET CSV URL
+// =====================================================
+
+const sheetURL =
+'https://docs.google.com/spreadsheets/d/1Yhd0W2uyMZxPDWQ_XaaHEvUkqvjy8AQaYe0h4XBK-mk/gviz/tq?tqx=out:csv';
+
+
+
+// =====================================================
+// COLORS FOR TANKS
+// =====================================================
+
+const colors = {
+
+    T05:'blue',
+    T06:'red',
+    T07:'green',
+    T08:'purple',
+    T11:'orange',
+    T12:'brown'
+};
+
+
+
+// =====================================================
+// LOAD GOOGLE SHEET
+// =====================================================
+
+Papa.parse(sheetURL,{
+
+    download:true,
+
+    header:true,
+
+    skipEmptyLines:true,
+
+    complete:function(results){
+
+        console.log(results.data);
+
+        createAllCharts(results.data);
+    }
+});
+
+
+
+// =====================================================
+// CREATE ALL CHARTS
+// =====================================================
+
+function createAllCharts(rows){
+
+    const dates =
+    [...new Set(rows.map(r => r["RECEIPT STARTED"]))];
+
+
+
+    const tanks =
+    [...new Set(rows.map(r => r["TANK @ MGT"]))];
+
+
+
+    createChart(
+        'densityChart',
+        'DENSITY KG/M3',
+        dates,
+        tanks,
+        rows
+    );
+
+
+
+    createChart(
+        'flashChart',
+        'FLASH POINT C',
+        dates,
+        tanks,
+        rows
+    );
+
+
+
+    createChart(
+        'recoveryChart',
+        '95% recovery temprature',
+        dates,
+        tanks,
+        rows
+    );
+
+
+
+    createChart(
+        'viscosityChart',
+        'VISCOSITY CS',
+        dates,
+        tanks,
+        rows
+    );
+
+
+
+    createChart(
+        'sulphurChart',
+        'SULPHUR PPM',
+        dates,
+        tanks,
+        rows
+    );
+}
+
+
+
+// =====================================================
+// CREATE CHART FUNCTION
+// =====================================================
+
+function createChart(
+
+    chartId,
+    parameter,
+    dates,
+    tanks,
+    rows
+
+){
+
+    const datasets = tanks.map(tank => {
+
+
+
+        const values = dates.map(date => {
+
+
+
+            const row = rows.find(
+
+                r =>
+
+                r["TANK @ MGT"] === tank &&
+                r["RECEIPT STARTED"] === date
+            );
+
+
+
+            return row
+            ? Number(row[parameter])
+            : null;
+
+        });
+
+
+
+        return {
+
+            label:tank,
+
+            data:values,
+
+            borderColor:colors[tank] || 'black',
+
+            backgroundColor:colors[tank] || 'black',
+
+            borderWidth:3,
+
+            tension:0.4,
+
+            spanGaps:true,
+
+            fill:false,
+
+            pointRadius:4,
+
+            pointHoverRadius:7
+        };
+    });
+
+
+
+    new Chart(
+
+        document.getElementById(chartId),
+
+        {
+
+            type:'line',
+
+            data:{
+
+                labels:dates,
+
+                datasets:datasets
+            },
+
+            options:{
+
+                responsive:true,
+
+                interaction:{
+
+                    intersect:false,
+
+                    mode:'index'
+                },
+
+                plugins:{
+
+                    legend:{
+
+                        position:'top'
+                    }
+                },
+
+                scales:{
+
+                    x:{
+
+                        title:{
+
+                            display:true,
+
+                            text:'Date'
+                        }
+                    },
+
+                    y:{
+
+                        beginAtZero:false
+                    }
+                }
+            }
+        }
+    );
+}
+
+
+
+// =====================================================
+// AUTO REFRESH EVERY 1 MINUTE
+// =====================================================
+
+setTimeout(()=>{
+
+    location.reload();
+
+},60000);
+
+</script>
+
+</body>
+</html>
