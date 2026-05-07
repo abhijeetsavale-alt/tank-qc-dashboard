@@ -6,18 +6,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>QC Multi Tank Dashboard</title>
+<title>Tank QC Analytics Dashboard</title>
 
-<!-- NO CACHE -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
+<!-- AUTO REFRESH -->
+<meta http-equiv="refresh" content="300">
 
 <!-- CHART JS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- PAPAPARSE -->
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
 
@@ -28,22 +23,69 @@
 }
 
 body{
-    font-family:Arial;
     background:#f4f7fb;
+    font-family:Arial,sans-serif;
     padding:20px;
 }
 
-h1{
+/* HEADER */
+
+.header{
     text-align:center;
-    color:#003366;
     margin-bottom:40px;
 }
 
+.header h1{
+    color:#003366;
+    font-size:38px;
+    margin-bottom:10px;
+}
+
+.header p{
+    color:#666;
+    font-size:16px;
+}
+
+/* KPI SECTION */
+
+.kpi-container{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:20px;
+    margin-bottom:35px;
+}
+
+.kpi-card{
+    background:white;
+    border-radius:18px;
+    padding:25px;
+    box-shadow:0 4px 15px rgba(0,0,0,0.1);
+    transition:0.3s;
+}
+
+.kpi-card:hover{
+    transform:translateY(-5px);
+}
+
+.kpi-title{
+    color:#666;
+    font-size:15px;
+    margin-bottom:10px;
+}
+
+.kpi-value{
+    font-size:34px;
+    font-weight:bold;
+    color:#003366;
+}
+
+/* GRAPH CARD */
+
 .card{
     background:white;
-    padding:20px;
-    margin-bottom:35px;
+    padding:25px;
     border-radius:18px;
+    margin-bottom:35px;
     box-shadow:0 4px 15px rgba(0,0,0,0.1);
 }
 
@@ -52,16 +94,32 @@ h1{
     color:#222;
 }
 
-.chart-box{
+.chart-container{
     position:relative;
     height:450px;
 }
 
-.loader{
+/* FOOTER */
+
+.footer{
     text-align:center;
-    padding:30px;
-    font-size:18px;
     color:#666;
+    margin-top:30px;
+    font-size:14px;
+}
+
+/* MOBILE */
+
+@media(max-width:768px){
+
+    .header h1{
+        font-size:28px;
+    }
+
+    .chart-container{
+        height:350px;
+    }
+
 }
 
 </style>
@@ -70,225 +128,333 @@ h1{
 
 <body>
 
-<h1>QC Tank Dashboard</h1>
+<!-- HEADER -->
 
-<div id="loading" class="loader">
-Loading Dashboard...
+<div class="header">
+    <h1>Tank QC Analytics Dashboard</h1>
+    <p>Live Tank Quality Monitoring System</p>
+</div>
+
+<!-- KPI SECTION -->
+
+<div class="kpi-container">
+
+    <div class="kpi-card">
+        <div class="kpi-title">Total Tanks</div>
+        <div class="kpi-value">6</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-title">Avg Density</div>
+        <div class="kpi-value">822</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-title">Avg Flash Point</div>
+        <div class="kpi-value">38°C</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-title">Avg Sulphur</div>
+        <div class="kpi-value">6.8</div>
+    </div>
+
 </div>
 
 <!-- DENSITY -->
+
 <div class="card">
-    <h2>Density KG/M3</h2>
-    <div class="chart-box">
+    <h2>Density Trend (kg/m³)</h2>
+    <div class="chart-container">
         <canvas id="densityChart"></canvas>
     </div>
 </div>
 
-<!-- FLASH POINT -->
+<!-- FLASH -->
+
 <div class="card">
-    <h2>Flash Point °C</h2>
-    <div class="chart-box">
+    <h2>Flash Point Trend (°C)</h2>
+    <div class="chart-container">
         <canvas id="flashChart"></canvas>
     </div>
 </div>
 
-<!-- RECOVERY TEMP -->
+<!-- RECOVERY -->
+
 <div class="card">
     <h2>95% Recovery Temperature</h2>
-    <div class="chart-box">
+    <div class="chart-container">
         <canvas id="recoveryChart"></canvas>
     </div>
 </div>
 
 <!-- VISCOSITY -->
+
 <div class="card">
-    <h2>Viscosity CS</h2>
-    <div class="chart-box">
+    <h2>Viscosity Trend (CS)</h2>
+    <div class="chart-container">
         <canvas id="viscosityChart"></canvas>
     </div>
 </div>
 
 <!-- SULPHUR -->
+
 <div class="card">
-    <h2>Sulphur PPM</h2>
-    <div class="chart-box">
+    <h2>Sulphur Trend (PPM)</h2>
+    <div class="chart-container">
         <canvas id="sulphurChart"></canvas>
     </div>
 </div>
 
+<!-- FOOTER -->
+
+<div class="footer">
+    Auto Refresh Every 5 Minutes | QC Analytics Dashboard
+</div>
+
 <script>
 
-/* GOOGLE SHEET CSV */
+/* DATES */
 
-const sheetURL =
-"https://docs.google.com/spreadsheets/d/e/2PACX-1vRFIeup4WP4MQh4zyOEi4QvjYq6b-j2jelIBfOCIiVSY5H5V_KIewWpTrrrk8Z0LSM6HvHJ7DhA_YJ-/pub?output=csv";
+const dates = [
 
-/* COLORS */
+'01.04',
+'03.04',
+'04.04',
+'05.04',
+'06.04',
+'07.04',
+'09.04',
+'10.04',
+'11.04',
+'13.04',
+'15.04',
+'18.04',
+'19.04',
+'20.04',
+'22.04',
+'23.04',
+'24.04',
+'25.04',
+'26.04'
 
-const colors = [
-    "#ff0000",
-    "#007bff",
-    "#28a745",
-    "#ff9900",
-    "#8000ff",
-    "#00bcd4",
-    "#e91e63",
-    "#795548"
 ];
 
-/* FETCH DATA */
+/* COMMON OPTIONS */
 
-Papa.parse(sheetURL, {
+const commonOptions = {
 
-    download:true,
-    header:true,
-    skipEmptyLines:true,
+    responsive:true,
 
-    complete:function(results){
+    maintainAspectRatio:false,
 
-        document.getElementById("loading").style.display = "none";
+    interaction:{
+        intersect:false,
+        mode:'index'
+    },
 
-        const data = results.data;
+    plugins:{
 
-        console.log(data);
-
-        /* COLUMN NAMES */
-
-        const tankColumn = "TANK @ MGT";
-
-        const parameters = [
-            {
-                column:"DENSITY KG/M3",
-                chart:"densityChart"
-            },
-            {
-                column:"FLASH POINT C",
-                chart:"flashChart"
-            },
-            {
-                column:"95% recovery temprature",
-                chart:"recoveryChart"
-            },
-            {
-                column:"VISCOSITY CS",
-                chart:"viscosityChart"
-            },
-            {
-                column:"SULPHUR PPM",
-                chart:"sulphurChart"
-            }
-        ];
-
-        /* UNIQUE TANKS */
-
-        const tanks = [...new Set(data.map(row => row[tankColumn]))];
-
-        /* CREATE EACH GRAPH */
-
-        parameters.forEach(param => {
-
-            const datasets = [];
-
-            tanks.forEach((tank,index) => {
-
-                const tankData = data.filter(
-                    row => row[tankColumn] === tank
-                );
-
-                datasets.push({
-
-                    label:tank,
-
-                    data:tankData.map(
-                        row => parseFloat(row[param.column])
-                    ),
-
-                    borderColor:colors[index % colors.length],
-
-                    backgroundColor:colors[index % colors.length],
-
-                    borderWidth:3,
-
-                    tension:0.3,
-
-                    fill:false
-
-                });
-
-            });
-
-            /* X AXIS */
-
-            const labels = data.map(
-                row => row["RECEIPT STARTED"]
-            );
-
-            /* CREATE CHART */
-
-            new Chart(document.getElementById(param.chart), {
-
-                type:'line',
-
-                data:{
-
-                    labels:labels,
-
-                    datasets:datasets
-
-                },
-
-                options:{
-
-                    responsive:true,
-
-                    maintainAspectRatio:false,
-
-                    interaction:{
-                        mode:'index',
-                        intersect:false
-                    },
-
-                    plugins:{
-                        legend:{
-                            position:'top'
-                        }
-                    },
-
-                    scales:{
-
-                        x:{
-                            title:{
-                                display:true,
-                                text:"Receipt Started"
-                            }
-                        },
-
-                        y:{
-                            title:{
-                                display:true,
-                                text:param.column
-                            }
-                        }
-
-                    }
-
-                }
-
-            });
-
-        });
+        legend:{
+            position:'top'
+        }
 
     },
 
-    error:function(err){
+    scales:{
 
-        console.error(err);
+        x:{
+            title:{
+                display:true,
+                text:'Date'
+            }
+        },
 
-        alert("Failed to load Google Sheet");
+        y:{
+            beginAtZero:false
+        }
 
     }
 
-});
+};
+
+/* DATASET CREATOR */
+
+function createDataset(label,data,color){
+
+    return{
+
+        label:label,
+
+        data:data,
+
+        borderColor:color,
+
+        backgroundColor:color,
+
+        borderWidth:3,
+
+        tension:0.4,
+
+        fill:false,
+
+        spanGaps:true,
+
+        pointRadius:4,
+
+        pointHoverRadius:7
+
+    };
+
+}
+
+/* UNIVERSAL CHART FUNCTION */
+
+function createChart(chartId,datasets){
+
+    new Chart(document.getElementById(chartId),{
+
+        type:'line',
+
+        data:{
+
+            labels:dates,
+
+            datasets:datasets
+
+        },
+
+        options:commonOptions
+
+    });
+
+}
+
+/* DENSITY */
+
+createChart('densityChart',[
+
+    createDataset('T05',
+    [null,null,null,null,822.3,819.7,null,null,null,null,null,819.7,null,null,null,null,823.5,null,null],
+    'blue'),
+
+    createDataset('T06',
+    [null,null,null,null,null,null,null,null,820.3,820.0,null,null,820,822,null,null,null,822,822.1],
+    'red'),
+
+    createDataset('T07',
+    [null,null,null,818.9,820.4,null,null,null,null,820.4,821.2,null,null,null,null,821.3,822.3,null,null],
+    'green'),
+
+    createDataset('T08',
+    [822.4,822.4,null,null,null,null,822.4,821.4,null,null,null,null,null,null,821.4,822.2,null,null,821],
+    'purple'),
+
+    createDataset('T11',
+    [null,null,820.9,818.9,null,null,null,null,null,null,820.6,null,null,null,null,821.4,null,null,null],
+    'orange'),
+
+    createDataset('T12',
+    [null,820.6,821.3,null,null,null,null,821.3,821.6,null,null,null,825.7,null,null,null,null,null,825.7],
+    'brown')
+
+]);
+
+/* FLASH */
+
+createChart('flashChart',[
+
+    createDataset('T05',
+    [null,null,null,null,38,37.5,null,null,null,null,null,37.5,null,null,null,null,38.5,null,null],
+    'blue'),
+
+    createDataset('T06',
+    [null,null,null,null,null,null,null,null,37,38,null,null,38,38,null,null,null,38,37],
+    'red'),
+
+    createDataset('T07',
+    [null,null,null,37,38,null,null,null,null,38,37.5,null,null,null,null,38,38,null,null],
+    'green'),
+
+    createDataset('T08',
+    [37,37,null,null,null,null,37,37,null,null,null,null,null,null,37,38,null,null,38.5],
+    'purple'),
+
+    createDataset('T11',
+    [null,null,37.5,37,null,null,null,null,null,null,38,null,null,null,null,37.5,null,null,null],
+    'orange'),
+
+    createDataset('T12',
+    [null,38.5,38.5,null,null,null,null,38.5,37.5,null,null,null,38.5,null,null,null,null,null,38.5],
+    'brown')
+
+]);
+
+/* RECOVERY */
+
+createChart('recoveryChart',[
+
+    createDataset('T05',
+    [null,null,null,null,348.6,351.5,null,null,null,null,null,351.5,null,null,null,null,350.1,null,null],
+    'blue'),
+
+    createDataset('T06',
+    [null,null,null,null,null,null,null,null,348,350.5,null,null,350.5,354.5,null,null,null,354.5,357.2],
+    'red'),
+
+    createDataset('T07',
+    [null,null,null,353,350,null,null,null,null,350,351.5,null,null,null,null,356.8,357.7,null,null],
+    'green'),
+
+    createDataset('T08',
+    [348.9,351,null,null,null,null,351,349.8,null,null,null,null,null,null,349.8,359.5,null,null,354.3],
+    'purple')
+
+]);
+
+/* VISCOSITY */
+
+createChart('viscosityChart',[
+
+    createDataset('T05',
+    [null,null,null,null,2.248,2.303,null,null,null,null,null,2.303,null,null,null,null,2.372,null,null],
+    'blue'),
+
+    createDataset('T06',
+    [null,null,null,null,null,null,null,null,2.217,2.3,null,null,2.325,2.347,null,null,null,2.347,2.334],
+    'red'),
+
+    createDataset('T07',
+    [null,null,null,2.258,2.271,null,null,null,null,2.271,2.456,null,null,null,null,2.455,2.396,null,null],
+    'green'),
+
+    createDataset('T08',
+    [2.281,2.274,null,null,null,null,2.274,2.387,null,null,null,null,null,null,2.387,2.402,null,null,2.377],
+    'purple')
+
+]);
+
+/* SULPHUR */
+
+createChart('sulphurChart',[
+
+    createDataset('T05',
+    [null,null,null,null,6.9,6.6,null,null,null,null,null,6.6,null,null,null,null,6.6,null,null],
+    'blue'),
+
+    createDataset('T06',
+    [null,null,null,null,null,null,null,null,7.4,6.1,null,null,6.1,7.6,null,null,null,7.6,6.6],
+    'red'),
+
+    createDataset('T07',
+    [null,null,null,6.3,6.9,null,null,null,null,6.9,6.5,null,null,null,null,6,6.2,null,null],
+    'green'),
+
+    createDataset('T08',
+    [6.8,7.5,null,null,null,null,7.5,6.6,null,null,null,null,null,null,6.6,7.1,null,null,7],
+    'purple')
+
+]);
 
 </script>
 
