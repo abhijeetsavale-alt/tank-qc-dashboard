@@ -1,23 +1,103 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
 
-<title>DEBUG GOOGLE SHEET</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<title>QC Tank Dashboard</title>
+
+<!-- NO CACHE -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+<!-- CHART JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- PAPAPARSE -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
 
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
 body{
-    font-family:Arial;
+    font-family:Arial, sans-serif;
+    background:#f4f7fb;
     padding:20px;
 }
 
-pre{
-    background:#f4f4f4;
-    padding:20px;
-    border-radius:10px;
+/* HEADER */
+
+.header{
+    text-align:center;
+    margin-bottom:30px;
+}
+
+.header h1{
+    color:#003366;
+    font-size:36px;
+}
+
+.header p{
+    color:#666;
+    margin-top:10px;
+}
+
+/* CARD */
+
+.card{
+    background:white;
+    padding:25px;
+    border-radius:18px;
+    box-shadow:0 4px 15px rgba(0,0,0,0.1);
+    margin-bottom:30px;
+}
+
+/* CHART */
+
+.chart-container{
+    position:relative;
+    height:450px;
+    width:100%;
+}
+
+/* LOADER */
+
+.loader{
+    text-align:center;
+    font-size:18px;
+    color:#666;
+    padding:40px;
+}
+
+/* FOOTER */
+
+.footer{
+    text-align:center;
+    margin-top:30px;
+    color:#777;
+    font-size:14px;
+}
+
+/* MOBILE */
+
+@media(max-width:768px){
+
+    .header h1{
+        font-size:28px;
+    }
+
+    .chart-container{
+        height:350px;
+    }
+
 }
 
 </style>
@@ -26,41 +106,152 @@ pre{
 
 <body>
 
-<h1>Google Sheet Debug</h1>
+<!-- HEADER -->
 
-<h2>Detected Columns:</h2>
+<div class="header">
+    <h1>QC Tank Dashboard</h1>
+    <p>Live Google Sheet Connected Dashboard</p>
+</div>
 
-<pre id="output"></pre>
+<!-- CHART CARD -->
+
+<div class="card">
+
+    <div id="loading" class="loader">
+        Loading Dashboard...
+    </div>
+
+    <div class="chart-container">
+        <canvas id="densityChart"></canvas>
+    </div>
+
+</div>
+
+<!-- FOOTER -->
+
+<div class="footer">
+    Auto Updated from Google Sheet
+</div>
 
 <script>
 
+/* GOOGLE SHEET CSV LINK */
+
 const sheetURL =
-'https://docs.google.com/spreadsheets/d/1Yhd0W2uyMZxPDWQ_XaaHEvUkqvjy8AQaYe0h4XBK-mk/gviz/tq?tqx=out:csv';
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vRFIeup4WP4MQh4zyOEi4QvjYq6b-j2jelIBfOCIiVSY5H5V_KIewWpTrrrk8Z0LSM6HvHJ7DhA_YJ-/pub?output=csv";
 
+/* FETCH CSV */
 
+Papa.parse(sheetURL, {
 
-Papa.parse(sheetURL,{
+    download: true,
+    header: true,
+    skipEmptyLines: true,
 
-    download:true,
-
-    header:true,
-
-    skipEmptyLines:true,
-
-    complete:function(results){
+    complete: function(results){
 
         console.log(results.data);
 
-        const firstRow = results.data[0];
+        // HIDE LOADER
+        document.getElementById("loading").style.display = "none";
 
-        document.getElementById('output').innerText =
+        // AUTO DETECT COLUMNS
+        const headers = Object.keys(results.data[0]);
 
-        JSON.stringify(firstRow,null,2);
+        const xColumn = headers[0];
+        const yColumn = headers[1];
+
+        // DATA
+        const labels = results.data.map(row => row[xColumn]);
+        const values = results.data.map(row => parseFloat(row[yColumn]));
+
+        // CHART
+        new Chart(document.getElementById("densityChart"), {
+
+            type: 'line',
+
+            data: {
+
+                labels: labels,
+
+                datasets: [{
+
+                    label: yColumn,
+
+                    data: values,
+
+                    borderColor: '#007bff',
+
+                    backgroundColor: 'rgba(0,123,255,0.1)',
+
+                    borderWidth: 3,
+
+                    fill: true,
+
+                    tension: 0.3,
+
+                    pointRadius: 4,
+
+                    pointHoverRadius: 7
+
+                }]
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                plugins: {
+
+                    legend: {
+                        display: true
+                    }
+
+                },
+
+                scales: {
+
+                    x: {
+
+                        title: {
+                            display: true,
+                            text: xColumn
+                        }
+
+                    },
+
+                    y: {
+
+                        title: {
+                            display: true,
+                            text: yColumn
+                        },
+
+                        beginAtZero: false
+                    }
+
+                }
+
+            }
+
+        });
+
+    },
+
+    error: function(err){
+
+        console.error(err);
+
+        document.getElementById("loading").innerHTML =
+        "❌ Failed to load Google Sheet";
+
     }
+
 });
 
 </script>
 
 </body>
-
 </html>
