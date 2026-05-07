@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>QC Tank Dashboard</title>
+<title>QC Multi Tank Dashboard</title>
 
 <!-- NO CACHE -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -28,76 +28,40 @@
 }
 
 body{
-    font-family:Arial, sans-serif;
+    font-family:Arial;
     background:#f4f7fb;
     padding:20px;
 }
 
-/* HEADER */
-
-.header{
+h1{
     text-align:center;
-    margin-bottom:30px;
-}
-
-.header h1{
     color:#003366;
-    font-size:36px;
+    margin-bottom:40px;
 }
-
-.header p{
-    color:#666;
-    margin-top:10px;
-}
-
-/* CARD */
 
 .card{
     background:white;
-    padding:25px;
+    padding:20px;
+    margin-bottom:35px;
     border-radius:18px;
     box-shadow:0 4px 15px rgba(0,0,0,0.1);
-    margin-bottom:30px;
 }
 
-/* CHART */
+.card h2{
+    margin-bottom:20px;
+    color:#222;
+}
 
-.chart-container{
+.chart-box{
     position:relative;
     height:450px;
-    width:100%;
 }
-
-/* LOADER */
 
 .loader{
     text-align:center;
+    padding:30px;
     font-size:18px;
     color:#666;
-    padding:40px;
-}
-
-/* FOOTER */
-
-.footer{
-    text-align:center;
-    margin-top:30px;
-    color:#777;
-    font-size:14px;
-}
-
-/* MOBILE */
-
-@media(max-width:768px){
-
-    .header h1{
-        font-size:28px;
-    }
-
-    .chart-container{
-        height:350px;
-    }
-
 }
 
 </style>
@@ -106,146 +70,221 @@ body{
 
 <body>
 
-<!-- HEADER -->
+<h1>QC Tank Dashboard</h1>
 
-<div class="header">
-    <h1>QC Tank Dashboard</h1>
-    <p>Live Google Sheet Connected Dashboard</p>
+<div id="loading" class="loader">
+Loading Dashboard...
 </div>
 
-<!-- CHART CARD -->
-
+<!-- DENSITY -->
 <div class="card">
-
-    <div id="loading" class="loader">
-        Loading Dashboard...
-    </div>
-
-    <div class="chart-container">
+    <h2>Density KG/M3</h2>
+    <div class="chart-box">
         <canvas id="densityChart"></canvas>
     </div>
-
 </div>
 
-<!-- FOOTER -->
+<!-- FLASH POINT -->
+<div class="card">
+    <h2>Flash Point °C</h2>
+    <div class="chart-box">
+        <canvas id="flashChart"></canvas>
+    </div>
+</div>
 
-<div class="footer">
-    Auto Updated from Google Sheet
+<!-- RECOVERY TEMP -->
+<div class="card">
+    <h2>95% Recovery Temperature</h2>
+    <div class="chart-box">
+        <canvas id="recoveryChart"></canvas>
+    </div>
+</div>
+
+<!-- VISCOSITY -->
+<div class="card">
+    <h2>Viscosity CS</h2>
+    <div class="chart-box">
+        <canvas id="viscosityChart"></canvas>
+    </div>
+</div>
+
+<!-- SULPHUR -->
+<div class="card">
+    <h2>Sulphur PPM</h2>
+    <div class="chart-box">
+        <canvas id="sulphurChart"></canvas>
+    </div>
 </div>
 
 <script>
 
-/* GOOGLE SHEET CSV LINK */
+/* GOOGLE SHEET CSV */
 
 const sheetURL =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRFIeup4WP4MQh4zyOEi4QvjYq6b-j2jelIBfOCIiVSY5H5V_KIewWpTrrrk8Z0LSM6HvHJ7DhA_YJ-/pub?output=csv";
 
-/* FETCH CSV */
+/* COLORS */
+
+const colors = [
+    "#ff0000",
+    "#007bff",
+    "#28a745",
+    "#ff9900",
+    "#8000ff",
+    "#00bcd4",
+    "#e91e63",
+    "#795548"
+];
+
+/* FETCH DATA */
 
 Papa.parse(sheetURL, {
 
-    download: true,
-    header: true,
-    skipEmptyLines: true,
+    download:true,
+    header:true,
+    skipEmptyLines:true,
 
-    complete: function(results){
+    complete:function(results){
 
-        console.log(results.data);
-
-        // HIDE LOADER
         document.getElementById("loading").style.display = "none";
 
-        // AUTO DETECT COLUMNS
-        const headers = Object.keys(results.data[0]);
+        const data = results.data;
 
-        const xColumn = headers[0];
-        const yColumn = headers[1];
+        console.log(data);
 
-        // DATA
-        const labels = results.data.map(row => row[xColumn]);
-        const values = results.data.map(row => parseFloat(row[yColumn]));
+        /* COLUMN NAMES */
 
-        // CHART
-        new Chart(document.getElementById("densityChart"), {
+        const tankColumn = "TANK @ MGT";
 
-            type: 'line',
-
-            data: {
-
-                labels: labels,
-
-                datasets: [{
-
-                    label: yColumn,
-
-                    data: values,
-
-                    borderColor: '#007bff',
-
-                    backgroundColor: 'rgba(0,123,255,0.1)',
-
-                    borderWidth: 3,
-
-                    fill: true,
-
-                    tension: 0.3,
-
-                    pointRadius: 4,
-
-                    pointHoverRadius: 7
-
-                }]
+        const parameters = [
+            {
+                column:"DENSITY KG/M3",
+                chart:"densityChart"
             },
+            {
+                column:"FLASH POINT C",
+                chart:"flashChart"
+            },
+            {
+                column:"95% recovery temprature",
+                chart:"recoveryChart"
+            },
+            {
+                column:"VISCOSITY CS",
+                chart:"viscosityChart"
+            },
+            {
+                column:"SULPHUR PPM",
+                chart:"sulphurChart"
+            }
+        ];
 
-            options: {
+        /* UNIQUE TANKS */
 
-                responsive: true,
+        const tanks = [...new Set(data.map(row => row[tankColumn]))];
 
-                maintainAspectRatio: false,
+        /* CREATE EACH GRAPH */
 
-                plugins: {
+        parameters.forEach(param => {
 
-                    legend: {
-                        display: true
-                    }
+            const datasets = [];
+
+            tanks.forEach((tank,index) => {
+
+                const tankData = data.filter(
+                    row => row[tankColumn] === tank
+                );
+
+                datasets.push({
+
+                    label:tank,
+
+                    data:tankData.map(
+                        row => parseFloat(row[param.column])
+                    ),
+
+                    borderColor:colors[index % colors.length],
+
+                    backgroundColor:colors[index % colors.length],
+
+                    borderWidth:3,
+
+                    tension:0.3,
+
+                    fill:false
+
+                });
+
+            });
+
+            /* X AXIS */
+
+            const labels = data.map(
+                row => row["RECEIPT STARTED"]
+            );
+
+            /* CREATE CHART */
+
+            new Chart(document.getElementById(param.chart), {
+
+                type:'line',
+
+                data:{
+
+                    labels:labels,
+
+                    datasets:datasets
 
                 },
 
-                scales: {
+                options:{
 
-                    x: {
+                    responsive:true,
 
-                        title: {
-                            display: true,
-                            text: xColumn
-                        }
+                    maintainAspectRatio:false,
 
+                    interaction:{
+                        mode:'index',
+                        intersect:false
                     },
 
-                    y: {
+                    plugins:{
+                        legend:{
+                            position:'top'
+                        }
+                    },
 
-                        title: {
-                            display: true,
-                            text: yColumn
+                    scales:{
+
+                        x:{
+                            title:{
+                                display:true,
+                                text:"Receipt Started"
+                            }
                         },
 
-                        beginAtZero: false
+                        y:{
+                            title:{
+                                display:true,
+                                text:param.column
+                            }
+                        }
+
                     }
 
                 }
 
-            }
+            });
 
         });
 
     },
 
-    error: function(err){
+    error:function(err){
 
         console.error(err);
 
-        document.getElementById("loading").innerHTML =
-        "❌ Failed to load Google Sheet";
+        alert("Failed to load Google Sheet");
 
     }
 
